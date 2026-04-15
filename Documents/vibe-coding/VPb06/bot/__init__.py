@@ -1,2 +1,0 @@
-"""Telegram Tasks Bot package."""
-

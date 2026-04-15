@@ -1,5 +1,0 @@
-BOT_TOKEN=PUT_TELEGRAM_BOT_TOKEN_HERE
-DATABASE_PATH=tasks.db
-
-# Не включайте .env в коммит.
-# Файл .env уже используется в проекте и содержит реальные секреты.
