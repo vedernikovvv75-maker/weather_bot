@@ -2,41 +2,62 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from time import time
 from typing import Any
 
-
-class StorageError(RuntimeError):
-    """Raised when cache file cannot be read or written."""
+DATA_PATH = Path("User_Data.json")
 
 
-def save_to_file(data: dict[str, Any], path: str = "currency_rate.json") -> None:
+def _read_all() -> dict[str, Any]:
+    if not DATA_PATH.exists():
+        return {}
     try:
-        with open(path, "w", encoding="utf-8") as file:
-            json.dump(data, file, ensure_ascii=False, indent=4)
-    except OSError as error:
-        raise StorageError(f"Не удалось сохранить кэш в {path}.") from error
-
-
-def read_from_file(path: str = "currency_rate.json") -> dict[str, Any]:
-    try:
-        with open(path, "r", encoding="utf-8") as file:
+        with DATA_PATH.open("r", encoding="utf-8") as file:
             data = json.load(file)
-    except FileNotFoundError as error:
-        raise StorageError(f"Файл кэша {path} не найден.") from error
-    except json.JSONDecodeError as error:
-        raise StorageError(f"Файл кэша {path} поврежден (невалидный JSON).") from error
-    except OSError as error:
-        raise StorageError(f"Не удалось прочитать файл кэша {path}.") from error
-
+    except (OSError, json.JSONDecodeError):
+        return {}
     if not isinstance(data, dict):
-        raise StorageError(f"Файл кэша {path} имеет неверный формат.")
+        return {}
     return data
 
 
-def is_cache_fresh(path: str = "currency_rate.json", max_age_hours: int = 24) -> bool:
-    file_path = Path(path)
-    if not file_path.exists():
-        return False
-    age_seconds = time() - file_path.stat().st_mtime
-    return age_seconds < max_age_hours * 3600
+def _write_all(data: dict[str, Any]) -> None:
+    DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with DATA_PATH.open("w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+    except OSError:
+        return
+
+
+def load_user(user_id: int) -> dict[str, Any]:
+    all_data = _read_all()
+    raw = all_data.get(str(user_id), {})
+    if not isinstance(raw, dict):
+        raw = {}
+
+    notifications = raw.get("notifications", {})
+    if not isinstance(notifications, dict):
+        notifications = {}
+
+    return {
+        "city": raw.get("city"),
+        "lat": raw.get("lat"),
+        "lon": raw.get("lon"),
+        "notifications": {
+            "enabled": bool(notifications.get("enabled", False)),
+            "interval_h": int(notifications.get("interval_h", 2) or 2),
+        },
+        "last_sent_at": raw.get("last_sent_at"),
+    }
+
+
+def save_user(user_id: int, data: dict[str, Any]) -> None:
+    all_data = _read_all()
+    all_data[str(user_id)] = {
+        "city": data.get("city"),
+        "lat": data.get("lat"),
+        "lon": data.get("lon"),
+        "notifications": data.get("notifications", {"enabled": False, "interval_h": 2}),
+        "last_sent_at": data.get("last_sent_at"),
+    }
+    _write_all(all_data)

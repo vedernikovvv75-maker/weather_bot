@@ -1,6 +1,3 @@
+.env
 venv/
 __pycache__/
-*.pyc
-currency_rate.json
-.env
-weather_cache.json
